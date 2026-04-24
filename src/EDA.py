@@ -21,6 +21,9 @@ print(df.describe())
 from sklearn.impute import KNNImputer
 from sklearn.preprocessing import RobustScaler
 
+
+df["customer_birthdate"] = pd.to_datetime(df["customer_birthdate"])
+
 # Selecting numerical columns
 numerical_cols = df.select_dtypes(include=[np.number]).columns
 # Exclude customer_id if it's not a feature
