@@ -20,22 +20,27 @@ class SOM():
         self.feature_names = None
 
 
+    # initializing units randomly - values are in a range [self.low_range, self.high_range]
     def initialise(self):
         self.units = np.array(
                     [[random.uniform(self.low_range, self.high_range) for _ in range(self.dimensions)] for _ in range(self.k)]
                             )
 
+    # Euclidean distance calculation
     def distance(self, input, unit):
         return np.linalg.norm(input - unit)
     
+    # the "how far" equation - neighborhood influence
     def how_far(self, unit1, unit2):
         return np.exp(-(np.linalg.norm(unit1 - unit2) ** 2) / (2 * (self.sigma ** 2)))
     
 
+    # get the Best Matching Unit for a given input vector
     def get_bmu(self, x):
         distances = [np.linalg.norm(x - w) for w in self.units]
         return np.argmin(distances)
     
+    # assign the Best Matching Unit for each input vector
     def cluster_inputs(self, inputs):
         inputs = np.array(inputs)
         clusters = [[] for _ in range(self.k)]
@@ -44,25 +49,34 @@ class SOM():
             clusters[bmu].append(x)
         return clusters
 
+    # the SOM algorithm
     def algorithm(self, inputs, columns):
+        #initialising the units randomly
         self.initialise()
         self.feature_names = columns
         history = []
         for _ in range(self.epochs):
-            #print('entered iter')
             for x in inputs:
+                # calculate distance of each unit to the corresponding input vector
                 distances = [self.distance(x, unit) for unit in self.units]
+                # find the BMU
                 best_matching_unit = self.units[np.argmin(distances)]
                 for i in range(len(self.units)):
+                    # update the position of each unit based on the neighborhood function as well as the distance
+                    # of the input vector from the corresponding unit.
                     unit = self.units[i]
                     influence = self.how_far(unit, best_matching_unit)
                     self.units[i] = unit + self.alpha * influence * (x - unit)
 
+            # record the current positions of the units.
             history.append(self.units.copy())
 
+        # at this point self.units are  finalised. we return the history (history[-1] is the final units' positions)
+        # and we return also the clusters themselves.
         return history, self.cluster_inputs(inputs)
     
 
+    # auxiliary funciton for plotting
     def get_grid(self):
         return self.units.reshape(self.grid_size, self.grid_size, -1)
     
@@ -111,7 +125,6 @@ class SOM():
         plt.style.use('seaborn-v0_8-white')
         fig, ax = plt.subplots(figsize=(7, 7), dpi=120)
         
-        # 'viridis' or 'bone' are standard, perceptually uniform maps for U-matrices
         im = ax.imshow(U, cmap="viridis", interpolation="bilinear")
         
         ax.set_title("SOM U-Matrix (Distance Map)", fontsize=16, fontweight='bold', pad=15)
@@ -133,6 +146,8 @@ class SOM():
         plt.show()
 
 
+    # this function return a list of planes - each plane represent the values of one feature.
+    # To be more precise, each plane represents the learned weights of a single feature across all SOM units.
     def component_planes(self):
         n = self.grid_size
         grid = self.units.reshape(n, n, -1)
@@ -196,17 +211,17 @@ class SOM():
        
         plt.show()
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     
-    data = pd.read_csv("data/customer_info_cleaned.csv")
-    data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
+#     data = pd.read_csv("data/customer_info_cleaned.csv")
+#     data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
 
-    data_for_clustering = data.iloc[:,4:].copy()
+#     data_for_clustering = data.iloc[:,4:].copy()
 
-    print(data_for_clustering.columns)
+#     print(data_for_clustering.columns)
 
-    som = SOM(sigma=1, alpha=1.5, dimensions=21, k=9, low_range=-1, high_range=1, epochs=100)
-    history, clusters = som.algorithm(data_for_clustering.values, data_for_clustering.columns)
+#     som = SOM(sigma=1, alpha=1.5, dimensions=21, k=9, low_range=-1, high_range=1, epochs=100)
+#     history, clusters = som.algorithm(data_for_clustering.values, data_for_clustering.columns)
 
-    som.plot_u_matrix()
-    som.plot_component_planes()
+#     som.plot_u_matrix()
+#     som.plot_component_planes()
