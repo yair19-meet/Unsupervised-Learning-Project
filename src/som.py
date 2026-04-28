@@ -154,9 +154,11 @@ class SOM():
         rows = int(np.ceil(n_features / cols))
 
         plt.style.use("seaborn-v0_8-white")
-        fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 4 * rows), dpi=120)
         
-        # Ensure axes is always iterable even if there's only 1 feature
+        
+        fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 4 * rows), dpi=120, constrained_layout=True)
+        
+        # Ensure axes is always iterable
         if n_features > 1:
             axes = np.array(axes).reshape(-1)
         else:
@@ -165,27 +167,24 @@ class SOM():
         for i, plane in enumerate(planes):
             ax = axes[i]
 
-            # Bilinear interpolation makes the grid transitions smoother
             im = ax.imshow(
                 plane,
-                cmap="coolwarm", # 'coolwarm' or 'viridis' look great for features   
+                cmap="coolwarm",   
                 interpolation="bilinear"
             )
 
-            # Safely get feature names
             title = self.feature_names[i] if self.feature_names is not None else f"Feature {i+1}"
             
-            ax.set_title(title, fontsize=11, fontweight='bold', pad=12)
+            # Increased pad to 15 to give the title a bit more breathing room from its own map
+            ax.set_title(title, fontsize=11, fontweight='bold', pad=15)
             ax.set_xticks([])
             ax.set_yticks([])
 
-            # Clean borders
             for spine in ax.spines.values():
                 spine.set_visible(True)
                 spine.set_color('#eeeeee')
                 spine.set_linewidth(1)
 
-            # Individual colorbars for each plane
             cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
             cbar.outline.set_visible(False)
             cbar.ax.tick_params(labelsize=9)
@@ -194,10 +193,8 @@ class SOM():
         for j in range(n_features, len(axes)):
             axes[j].axis("off")
 
-        # Add a main title to the figure
-        fig.suptitle("SOM Component Planes", fontsize=18, fontweight='bold', y=1.02)
-        plt.tight_layout()
-        plt.show()   
+       
+        plt.show()
 
 if __name__ == '__main__':
     
@@ -208,7 +205,7 @@ if __name__ == '__main__':
 
     print(data_for_clustering.columns)
 
-    som = SOM(sigma=1, alpha=1.5, dimensions=21, k=16, low_range=-1, high_range=1, epochs=100)
+    som = SOM(sigma=1, alpha=1.5, dimensions=21, k=9, low_range=-1, high_range=1, epochs=100)
     history, clusters = som.algorithm(data_for_clustering.values, data_for_clustering.columns)
 
     som.plot_u_matrix()
