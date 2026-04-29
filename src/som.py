@@ -7,7 +7,7 @@ import pandas as pd
 
 
 class SOM():
-    def __init__(self, sigma, alpha, dimensions, k, low_range, high_range, epochs):
+    def __init__(self, sigma, alpha, dimensions, k, low_range, high_range, epochs, random_seed=42):
         self.sigma = sigma
         self.alpha = alpha
         self.dimensions = dimensions
@@ -18,39 +18,44 @@ class SOM():
         self.epochs = epochs
         self.grid_size = int(np.sqrt(self.k))
         self.feature_names = None
+        self.clusters = None
+        self.random_seed = random_seed
 
-
-    # initializing units randomly - values are in a range [self.low_range, self.high_range]
     def initialise(self):
+        """initializing units randomly - values are in a range [self.low_range, self.high_range]"""
+        if self.random_seed is not None:       
+            random.seed(self.random_seed)         
+            np.random.seed(self.random_seed)
+
         self.units = np.array(
                     [[random.uniform(self.low_range, self.high_range) for _ in range(self.dimensions)] for _ in range(self.k)]
                             )
 
-    # Euclidean distance calculation
+    
     def distance(self, input, unit):
+        """Euclidean distance calculation"""
         return np.linalg.norm(input - unit)
     
-    # the "how far" equation - neighborhood influence
     def how_far(self, unit1, unit2):
+        """the "how far" equation - neighborhood influence"""
         return np.exp(-(np.linalg.norm(unit1 - unit2) ** 2) / (2 * (self.sigma ** 2)))
     
 
-    # get the Best Matching Unit for a given input vector
     def get_bmu(self, x):
+        """get the Best Matching Unit for a given input vector"""
         distances = [np.linalg.norm(x - w) for w in self.units]
         return np.argmin(distances)
     
-    # assign the Best Matching Unit for each input vector
     def cluster_inputs(self, inputs):
+        """assign the Best Matching Unit for each input vector"""
         inputs = np.array(inputs)
-        clusters = [[] for _ in range(self.k)]
+        self.clusters = [[] for _ in range(self.k)]
         for x in inputs:
             bmu = self.get_bmu(x)
-            clusters[bmu].append(x)
-        return clusters
+            self.clusters[bmu].append(x)
 
-    # the SOM algorithm
     def algorithm(self, inputs, columns):
+        """the SOM algorithm"""
         #initialising the units randomly
         self.initialise()
         self.feature_names = columns
@@ -71,13 +76,15 @@ class SOM():
             # record the current positions of the units.
             history.append(self.units.copy())
 
-        # at this point self.units are  finalised. we return the history (history[-1] is the final units' positions)
-        # and we return also the clusters themselves.
-        return history, self.cluster_inputs(inputs)
+        # at this point self.units are  finalised.
+        # we label the clusters.
+        self.cluster_inputs(inputs)
+        # we return the history (history[-1] is the final units' positions)
+        return history
     
 
-    # auxiliary funciton for plotting
     def get_grid(self):
+        """auxiliary funciton for plotting"""
         return self.units.reshape(self.grid_size, self.grid_size, -1)
     
     def u_matrix(self):
@@ -125,7 +132,21 @@ class SOM():
         plt.style.use('seaborn-v0_8-white')
         fig, ax = plt.subplots(figsize=(7, 7), dpi=120)
         
-        im = ax.imshow(U, cmap="viridis", interpolation="bilinear")
+        # 1. Change 'bilinear' to 'nearest' so the boxes aren't blurry
+        im = ax.imshow(U, cmap="viridis", interpolation="nearest")
+        
+        # --- ADD THIS NEW BLOCK ---
+        # 2. Draw a precise white grid to bound every individual cell
+        ax.set_xticks(np.arange(-.5, U.shape[1], 1), minor=True)
+        ax.set_yticks(np.arange(-.5, U.shape[0], 1), minor=True)
+        ax.grid(which="minor", color="white", linestyle='-', linewidth=1.5)
+        
+        # 3. Mark the actual SOM units (neurons) with a distinct dot
+        n = int(np.sqrt(self.k))
+        for i in range(n):
+            for j in range(n):
+                # In the U-matrix, neurons are always at the even coordinates
+                ax.plot(2 * j, 2 * i, marker='o', color='white', markersize=5, markeredgecolor='black')
         
         ax.set_title("SOM U-Matrix (Distance Map)", fontsize=16, fontweight='bold', pad=15)
         ax.set_xticks([])
@@ -146,9 +167,9 @@ class SOM():
         plt.show()
 
 
-    # this function return a list of planes - each plane represent the values of one feature.
-    # To be more precise, each plane represents the learned weights of a single feature across all SOM units.
     def component_planes(self):
+        """ this function return a list of planes - each plane represent the values of one feature.
+            To be more precise, each plane represents the learned weights of a single feature across all SOM units."""
         n = self.grid_size
         grid = self.units.reshape(n, n, -1)
 
@@ -208,20 +229,53 @@ class SOM():
         for j in range(n_features, len(axes)):
             axes[j].axis("off")
 
-       
         plt.show()
 
-# if __name__ == '__main__':
+
+    def plot_cluster_sizes(self):
+        """Plots a bar chart showing the number of items assigned to each SOM unit."""
+        if not self.clusters:
+            print("Clusters are empty. Run the algorithm first.")
+            return
+            
+        # Count how many data points are in each cluster list
+        sizes = [len(cluster) for cluster in self.clusters]
+        cluster_labels = [f"Unit {i + 1}" for i in range(self.k)]
+        
+        plt.style.use('seaborn-v0_8-white')
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=120)
+        
+        bars = ax.bar(cluster_labels, sizes, color='#3498db', edgecolor='black', alpha=0.8)
+        
+        ax.set_title("Population per SOM Unit", fontsize=16, fontweight='bold', pad=15)
+        ax.set_ylabel("Number of Customers", fontsize=12, fontweight='bold')
+        
+        plt.xticks(rotation=45, ha='right')
+        
+        # Add the exact count on top of each bar
+        for bar in bars:
+            yval = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2, yval + (max(sizes) * 0.02), 
+                    int(yval), ha='center', va='bottom', fontsize=11, fontweight='bold')
+            
+        for spine in ['top', 'right']:
+            ax.spines[spine].set_visible(False)
+            
+        plt.tight_layout()
+        plt.show()
+
+if __name__ == '__main__':
     
-#     data = pd.read_csv("data/customer_info_cleaned.csv")
-#     data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
+    data = pd.read_csv("data/customer_info_cleaned.csv")
+    data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
 
-#     data_for_clustering = data.iloc[:,4:].copy()
+    data_for_clustering = data.iloc[:,4:].copy()
 
-#     print(data_for_clustering.columns)
+    print(data_for_clustering.columns)
 
-#     som = SOM(sigma=1, alpha=1.5, dimensions=21, k=9, low_range=-1, high_range=1, epochs=100)
-#     history, clusters = som.algorithm(data_for_clustering.values, data_for_clustering.columns)
+    som = SOM(sigma=1, alpha=0.5, dimensions=21, k=9, low_range=-1, high_range=1, epochs=150, random_seed=7)
+    history = som.algorithm(data_for_clustering.values, data_for_clustering.columns)
 
-#     som.plot_u_matrix()
-#     som.plot_component_planes()
+    som.plot_u_matrix()
+    som.plot_component_planes()
+    som.plot_cluster_sizes()
