@@ -8,6 +8,14 @@ import seaborn as sns
 
 class KmeansClustering:
     def __init__(self, min_k, max_k, data, random_seed):
+        """
+        Class of Kmeans operations. 
+        Parameters:
+        min_k - the minimum amount of centroids to test the algorithm
+        max_k - maximum amount of centroids to test the algorithm
+        data - the data to cluster
+        random seed - for code reproducability
+        """
         self.min_k = min_k
         self.max_k = max_k
         self.data = data
