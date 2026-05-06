@@ -46,6 +46,10 @@ class SOM():
         distances = [np.linalg.norm(x - w) for w in self.units]
         return np.argmin(distances)
     
+    def get_labels(self, inputs):
+        """get the labels for each input vector"""
+        return np.array([self.get_bmu(x) for x in inputs])
+
     def cluster_inputs(self, inputs):
         """assign the Best Matching Unit for each input vector"""
         inputs = np.array(inputs)
