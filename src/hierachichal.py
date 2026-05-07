@@ -17,7 +17,9 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output", "hierarchic
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ── Load & scale data ─────────────────────────────────────────────────────────
-data = pd.read_csv("data/customer_info_cleaned.csv")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(current_dir, "..", "data", "customer_info_cleaned.csv")
+data = pd.read_csv(data_path)
 data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
 
 data_for_clustering = data.iloc[:, 4:].copy()
