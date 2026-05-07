@@ -27,14 +27,14 @@ def compare_clusters():
     # Using k=9 as seen in clustering.py
     k_kmeans = 8
     km_algo = KmeansClustering(min_k=2, max_k=15, data=data_scaled, random_seed=7)
-    kmeans_labels, _, _ = km_algo.cluster(k_kmeans, 10) # reduced epochs for speed
+    kmeans_labels, _, _ = km_algo.cluster(k_kmeans, 50) # reduced epochs for speed 
     
     # 3. Run SOM 
     print("Running SOM...")
     # Using k=9 (3x3 grid) as seen in som.py
     k_som = 9
     som_algo = SOM(sigma=1, alpha=0.5, dimensions=len(feature_names), k=k_som, 
-                   low_range=-1, high_range=1, epochs=50, random_seed=7) # reduced epochs for speed
+                   low_range=-1, high_range=1, epochs=500, random_seed=7) 
     _ = som_algo.algorithm(data_scaled, feature_names)
     som_labels = som_algo.get_labels(data_scaled)
     
