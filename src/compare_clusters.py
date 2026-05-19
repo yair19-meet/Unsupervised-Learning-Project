@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from clustering import KmeansClustering
 from som import SOM
+from umap import UMAP
+
 
 def compare_clusters():
     # 1. Load Data
@@ -25,7 +27,7 @@ def compare_clusters():
     # 2. Run K-Means
     print("Running K-Means...")
     # Using k=9 as seen in clustering.py
-    k_kmeans = 8
+    k_kmeans = 9
     km_algo = KmeansClustering(min_k=2, max_k=15, data=data_scaled, random_seed=7)
     kmeans_labels, _, _ = km_algo.cluster(k_kmeans, 50) # reduced epochs for speed 
     
@@ -89,5 +91,52 @@ def compare_clusters():
     
     return contingency_matrix
 
+def umap_visualization():
+    # 1. Load Data
+    print("Loading and preparing data...")
+    data = pd.read_csv("data/customer_info_cleaned.csv")
+    
+    # Selecting the same columns as in other scripts
+    data_for_clustering = data.iloc[:, 4:].copy()
+    feature_names = data_for_clustering.columns
+    
+    # Scaling data (highly recommended for K-Means and SOM)
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data_for_clustering)
+
+    # 2. Run K-Means
+    print("Running K-Means...")
+    # Using k=9 as seen in clustering.py
+    k_kmeans = 9
+    km_algo = KmeansClustering(min_k=2, max_k=15, data=data_scaled, random_seed=7)
+    kmeans_labels, _, _ = km_algo.cluster(k_kmeans, 50) # reduced epochs for speed
+
+    os.makedirs("output", exist_ok=True)
+    kmeans_labels = np.array(kmeans_labels, dtype=int)
+
+    print("Applying UMAP for dimensionality reduction...")
+
+    # Use n_components=2 for a 2D visualization
+    umap_obj = UMAP(n_components=2, 
+                  random_state=7, 
+                  n_neighbors=30, 
+                  min_dist=0.1, 
+                  metric='euclidean')
+
+    # Fit and transform the scaled data
+    embedding = umap_obj.fit_transform(data_scaled)
+
+    plt.figure(figsize=(10, 8))
+    scatter = plt.scatter(
+    embedding[:, 0], embedding[:, 1],
+    c=kmeans_labels,          # ← this is what colors the dots
+    cmap='tab10',             # or 'Set1', 'Paired', 'Spectral', etc.
+    s=5, alpha=0.7
+    )
+    plt.colorbar(scatter, label='K-Means Cluster')
+    plt.title('UMAP colored by K-Means Cluster')
+    plt.savefig("output/umap_kmeans.png")
+
+
 if __name__ == "__main__":
-    compare_clusters()
+    umap_visualization()

@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
     algorithm = KmeansClustering(min_k=2, max_k=15, data=data_for_clustering, random_seed=7)
 
-    labels, inertia, centroids = algorithm.cluster(8, 20)
+    labels, inertia, centroids = algorithm.cluster(9, 20)
 
     algorithm.plot_cluster_profiles(centroids, data_for_clustering.columns)
     algorithm.plot_cluster_sizes(labels)
