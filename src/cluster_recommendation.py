@@ -67,7 +67,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 K                = 9       # number of K-Means clusters (matches notebook)
 RANDOM_SEED      = 7      # same seed as notebook
-KMEANS_EPOCHS    = 100     # n_init passed to KMeans (same as notebook)
+KMEANS_EPOCHS    = 20      # n_init passed to KMeans (match clustering.py __main__)
 
 # Apriori thresholds – tweak if runtimes are too long or rules too sparse
 MIN_SUPPORT      = 0.02    # item must appear in ≥ 5 % of cluster transactions
@@ -187,21 +187,46 @@ def run_kmeans(merged: pd.DataFrame) -> np.ndarray:
     """
     print(f"\nRunning K-Means (k = {K}, seed = {RANDOM_SEED}, epochs = {KMEANS_EPOCHS}) ...")
 
-    # The notebook slices: merged_df.iloc[:, 4:-3]
-    # After merge that is columns 4 to the third-from-last
-    data_for_clustering = merged.iloc[:, 4:-3].copy()
 
-    scaler      = StandardScaler()
-    data_scaled = scaler.fit_transform(data_for_clustering)
+    # If clustering.py already produced persisted labels, load them to
+    # guarantee both scripts use the same cluster assignment. Otherwise
+    # fall back to running K-Means here.
+    labels_path = os.path.join(BASE_DIR, 'output', 'cluster_labels.csv')
+    if os.path.exists(labels_path):
+        try:
+            print(f"Loading persisted cluster labels from: {labels_path}")
+            labels_df = pd.read_csv(labels_path)
+            # Align labels to merged DataFrame by customer_id
+            merged = merged.copy()
+            merged = pd.merge(merged, labels_df, on='customer_id', how='left')
+            if 'cluster_label' not in merged.columns or merged['cluster_label'].isnull().any():
+                raise ValueError('Loaded labels do not align with merged customers')
+            labels = merged['cluster_label'].to_numpy()
+            inertia = None
+            centroids = None
+            print(f"  >> Loaded labels for {len(labels):,} customers from existing file.")
+            unique, counts = np.unique(labels, return_counts=True)
+            for seg, cnt in zip(unique, counts):
+                print(f"     Cluster {seg:2d}: {cnt:,} customers")
+            return labels
+        except Exception as e:
+            print(f"  [WARN] Failed to load persisted labels: {e}. Falling back to running K-Means.")
 
+    # Use the same feature slice as in clustering.py (iloc[:, 4:]) so
+    # cluster assignments are computed on the same columns.
+    data_for_clustering = merged.iloc[:, 4:].copy()
+
+    # Pass the DataFrame (unscaled) into the same KmeansClustering class
+    # used by clustering.py so returned labels/centroids align.
     km = KmeansClustering(
         min_k=2,
         max_k=K + 3,
-        data=data_scaled,
+        data=data_for_clustering,
         random_seed=RANDOM_SEED,
     )
 
-    labels, inertia, centroids = km.cluster(k=K, epochs=KMEANS_EPOCHS)
+    # clustering.cluster returns 4 values (labels, inertia, centroids, averages)
+    labels, inertia, centroids, _ = km.cluster(k=K, epochs=KMEANS_EPOCHS)
 
     print(f"  >> Inertia: {inertia:,.2f}")
     unique, counts = np.unique(labels, return_counts=True)
@@ -219,7 +244,7 @@ def build_cluster_dataframes(
     merged: pd.DataFrame, labels: np.ndarray
 ) -> dict[int, pd.DataFrame]:
     """
-    Attach the cluster labels and return a dict mapping cluster_id (1-8) to a
+    Attach the cluster labels and return a dict mapping cluster_id (1-9) to a
     DataFrame with columns: customer_id, shopping_bag (list of unique products).
     """
     merged = merged.copy()

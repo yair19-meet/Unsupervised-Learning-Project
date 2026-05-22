@@ -104,15 +104,35 @@ def umap_visualization():
     scaler = StandardScaler()
     data_scaled = scaler.fit_transform(data_for_clustering)
 
-    # 2. Run K-Means
-    print("Running K-Means...")
-    # Using k=9 as seen in clustering.py
-    k_kmeans = 9
-    km_algo = KmeansClustering(min_k=2, max_k=15, data=data_scaled, random_seed=7)
-    kmeans_labels, _, _ = km_algo.cluster(k_kmeans, 50) # reduced epochs for speed
+    # 2. Obtain cluster labels (prefer existing labels file)
+    labels_path = "output/cluster_labels.csv"
+    kmeans_labels = None
+    if os.path.exists(labels_path):
+        try:
+            df_labels = pd.read_csv(labels_path)
+            cols = [c for c in df_labels.columns if 'cluster' in c.lower()]
+            if cols:
+                labels = df_labels[cols[0]].values
+            else:
+                labels = df_labels.iloc[:, 0].values
+            labels = np.array(labels, dtype=int)
+            if labels.shape[0] != data_scaled.shape[0]:
+                raise ValueError(f"labels length {labels.shape[0]} != data length {data_scaled.shape[0]}")
+            kmeans_labels = labels
+            print(f"Loaded cluster labels from {labels_path}")
+        except Exception as e:
+            print(f"Could not use {labels_path}: {e}")
+            kmeans_labels = None
+
+    if kmeans_labels is None:
+        print("Running K-Means (fallback)...")
+        # Using k=9 as seen in clustering.py
+        k_kmeans = 9
+        km_algo = KmeansClustering(min_k=2, max_k=15, data=data_scaled, random_seed=7)
+        kmeans_labels, _, _ = km_algo.cluster(k_kmeans, 50) # reduced epochs for speed
+        kmeans_labels = np.array(kmeans_labels, dtype=int)
 
     os.makedirs("output", exist_ok=True)
-    kmeans_labels = np.array(kmeans_labels, dtype=int)
 
     print("Applying UMAP for dimensionality reduction...")
 

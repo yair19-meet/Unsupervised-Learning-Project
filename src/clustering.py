@@ -4,6 +4,8 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
+from sklearn.preprocessing import RobustScaler
 
 
 class KmeansClustering:
@@ -68,8 +70,15 @@ class KmeansClustering:
     def cluster(self, k, epochs):
         kmeans = KMeans(n_clusters=k, random_state=self.random_seed, n_init=epochs)
         kmeans.fit(self.data)
+        # shift labels to start from 1 for readability
         shifted_labels = kmeans.labels_ + 1
-        return shifted_labels, kmeans.inertia_, kmeans.cluster_centers_
+
+        # Create a DataFrame of per-cluster averages using the assigned labels
+        df = self.data.copy()
+        df['Cluster'] = shifted_labels
+        cluster_averages = df.groupby('Cluster').mean()
+
+        return shifted_labels, kmeans.inertia_, kmeans.cluster_centers_, cluster_averages
         
     
     def plot_cluster_profiles(self, centroids, feature_names):
@@ -91,35 +100,13 @@ class KmeansClustering:
         plt.yticks(rotation=0, fontsize=11)
         
         plt.tight_layout()
-        plt.show()
-
-    def plot_cluster_sizes(self, labels):
-        """Plots a bar chart showing the number of customers in each cluster."""
-        unique_labels, counts = np.unique(labels, return_counts=True)
-        
-        # Because we shifted the labels in the cluster() method, 'label' is already correct!
-        display_labels = [f"Segment {label}" for label in unique_labels]
-        
-        plt.style.use('seaborn-v0_8-white')
-        fig, ax = plt.subplots(figsize=(8, 5), dpi=120)
-        
-        bars = ax.bar(display_labels, counts, color='#3498db', edgecolor='black', alpha=0.8)
-        
-        ax.set_title("Customer Population per Segment", fontsize=16, fontweight='bold', pad=15)
-        ax.set_xlabel("Cluster ID", fontsize=12, fontweight='bold')
-        ax.set_ylabel("Number of Customers", fontsize=12, fontweight='bold')
-        
-        # Add the exact count on top of each bar
-        for bar in bars:
-            yval = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, yval + (max(counts) * 0.02), 
-                    int(yval), ha='center', va='bottom', fontsize=11, fontweight='bold')
-            
-        # Clean borders
-        for spine in ['top', 'right']:
-            ax.spines[spine].set_visible(False)
-            
-        plt.tight_layout()
+        # Save to repository visuals folder (use absolute path so script cwd won't matter)
+        project_root = Path(__file__).resolve().parent.parent
+        visuals_dir = project_root / 'visuals'
+        visuals_dir.mkdir(parents=True, exist_ok=True)
+        save_path = visuals_dir / 'kmeans_centroids.png'
+        plt.savefig(save_path)
+        print(f"Saved centroid heatmap to: {save_path}")
         plt.show()
 
 if __name__ == '__main__':
@@ -131,9 +118,63 @@ if __name__ == '__main__':
 
     algorithm = KmeansClustering(min_k=2, max_k=15, data=data_for_clustering, random_seed=7)
 
-    labels, inertia, centroids = algorithm.cluster(9, 20)
+    labels, inertia, centroids, cluster_averages = algorithm.cluster(9, 20)
+
+    # Persist per-customer cluster labels so other scripts can reuse them
+    project_root = Path(__file__).resolve().parent.parent
+    output_dir = project_root / 'output'
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        labels_df = pd.DataFrame({
+            'customer_id': data['customer_id'],
+            'cluster_label': labels,
+        })
+        labels_path = output_dir / 'cluster_labels.csv'
+        labels_df.to_csv(labels_path, index=False)
+        print(f"Wrote cluster labels to: {labels_path}")
+    except Exception as e:
+        print(f"Could not write cluster labels: {e}")
 
     algorithm.plot_cluster_profiles(centroids, data_for_clustering.columns)
-    algorithm.plot_cluster_sizes(labels)
 
     print(centroids)
+    print('\nCluster averages (per-feature mean by cluster):')
+    print(cluster_averages)
+
+    # Try to reconstruct the scaler from the original raw data so we can inverse-transform
+    project_root = Path(__file__).resolve().parent.parent
+    raw_path = project_root / 'data' / 'customer_info.csv'
+
+    output_dir = project_root / 'output'
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if raw_path.exists():
+            raw = pd.read_csv(raw_path)
+            # ensure same preprocessing of date column if present
+            if 'customer_birthdate' in raw.columns:
+                raw['customer_birthdate'] = pd.to_datetime(raw['customer_birthdate'])
+
+            # select the same feature columns used for clustering
+            raw_for_clustering = raw.iloc[:, 4:].copy()
+
+            scaler = RobustScaler()
+            scaler.fit(raw_for_clustering.values)
+
+            unscaled_avgs = pd.DataFrame(
+                scaler.inverse_transform(cluster_averages.values),
+                index=cluster_averages.index,
+                columns=cluster_averages.columns,
+            )
+
+            out_path = output_dir / 'average_cluster_unscaled.csv'
+            unscaled_avgs.to_csv(out_path)
+            print(f"Wrote unscaled cluster averages to: {out_path}")
+        else:
+            raise FileNotFoundError(f"Raw data file not found: {raw_path}")
+    except Exception as e:
+        # fallback: save the scaled averages and report the error
+        out_path = output_dir / 'average_cluster_scaled.csv'
+        cluster_averages.to_csv(out_path)
+        print(f"Could not unscale cluster averages ({e}). Wrote scaled averages to: {out_path}")
