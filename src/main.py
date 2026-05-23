@@ -1,22 +1,10 @@
 """
 main.py  --  Single entry-point for the clustering pipeline
 ============================================================
-Loads data once, trains both models, then calls existing visualisation
-functions from the other modules.  All plots are saved to visuals/.
+Loads data once, trains both models, assigns descriptive cluster names,
+then calls existing visualisation functions and the recommendation pipeline.
 
-Steps
------
-1. Load  data/customer_info_cleaned.csv
-2. Train K-Means (k=8)   via  clustering.KmeansClustering
-3. Train SOM (3x3=9)     via  som.SOM
-4. K-Means centroid heatmap            (clustering.py)
-5. SOM U-Matrix                        (som.py)
-6. SOM Component Planes                (som.py)
-7. SOM Hit Map                         (som.py)
-8. SOM Cluster Sizes                   (som.py)
-9. Dendrogram                          (hierachichal.py)
-10. K-Means vs SOM comparison heatmap  (compare_clusters.py)
-11. UMAP coloured by K-Means labels   (compare_clusters.py)
+All plots saved to visuals/.  Recommendation CSVs to output/recommendations/.
 
 Usage
 -----
@@ -36,6 +24,8 @@ from kmeans import KmeansClustering
 from som import SOM
 from compare_clusters import compare_clusters, umap_visualization
 from hierachichal import plot_dendrogram
+from cluster_profiles import get_cluster_names
+from cluster_recommendation import run_recommendations
 
 # ── paths ────────────────────────────────────────────────────────────────────
 BASE_DIR    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -49,6 +39,7 @@ RANDOM_SEED   = 7
 KMEANS_EPOCHS = 20     # n_init passed to sklearn KMeans
 SOM_EPOCHS    = 500    # SOM training iterations
 SOM_K         = 9      # 3x3 grid
+Run_recomendations = True
 
 
 def main():
@@ -65,7 +56,7 @@ def main():
     print(f"  {len(data):,} customers  x  {len(feature_names)} features")
 
     # =====================================================================
-    #  2. TRAIN K-MEANS
+    #  2. TRAIN K-MEANS + ASSIGN DESCRIPTIVE NAMES
     # =====================================================================
     print("\n" + "=" * 60)
     print(f"  Step 2 -- Training K-Means  (k={K})")
@@ -75,9 +66,19 @@ def main():
                           random_seed=RANDOM_SEED)
     kmeans_labels, inertia, centroids, cluster_avgs = km.cluster(K, KMEANS_EPOCHS)
     print(f"  Inertia: {inertia:,.2f}")
+
+    # Match centroids to descriptive names
+    cluster_names = get_cluster_names(centroids)
+    print("  Cluster names assigned:")
     unique, counts = np.unique(kmeans_labels, return_counts=True)
     for seg, cnt in zip(unique, counts):
-        print(f"    Cluster {seg}: {cnt:,} customers")
+        print(f"    {seg} = {cluster_names[seg - 1]}: {cnt:,} customers")
+
+    # Build labels DataFrame for downstream use
+    labels_df = pd.DataFrame({
+        "customer_id": data["customer_id"],
+        "cluster_name": [cluster_names[l - 1] for l in kmeans_labels],
+    })
 
     # =====================================================================
     #  3. TRAIN SOM
@@ -97,7 +98,7 @@ def main():
         print(f"    Cluster {seg}: {cnt:,} customers")
 
     # =====================================================================
-    #  4. K-MEANS CENTROID HEATMAP
+    #  4. K-MEANS CENTROID HEATMAP  (with descriptive names!)
     # =====================================================================
     print("\n" + "=" * 60)
     print("  Step 4 -- K-Means centroid heatmap")
@@ -105,6 +106,7 @@ def main():
     km.plot_cluster_profiles(
         centroids, feature_names,
         save_path=os.path.join(VISUALS_DIR, "kmeans_centroids.png"),
+        cluster_names=cluster_names,
     )
 
     # =====================================================================
@@ -172,10 +174,22 @@ def main():
     print("\n" + "=" * 60)
     print("  Step 11 -- UMAP visualisation")
     print("=" * 60)
-    umap_visualization(data_for_clustering, kmeans_labels, random_seed=RANDOM_SEED)
+    umap_visualization(data_for_clustering, kmeans_labels,
+                       random_seed=RANDOM_SEED,
+                       cluster_names=cluster_names)
+
+    # =====================================================================
+    #  12. RECOMMENDATIONS (Phase A: product lift, Phase B: Apriori)
+    # =====================================================================
+    print("\n")
+    if run_recommendations:
+        print("running apriori")
+        run_recommendations(labels_df)
+    else:
+        print("apriori wasnt run")
 
     print("\n" + "=" * 60)
-    print("  All done!")
+    print("  ALL STEPS COMPLETE!")
     print("=" * 60)
 
 

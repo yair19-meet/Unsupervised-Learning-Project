@@ -81,11 +81,14 @@ class KmeansClustering:
         return shifted_labels, kmeans.inertia_, kmeans.cluster_centers_, cluster_averages
         
     
-    def plot_cluster_profiles(self, centroids, feature_names):
+    def plot_cluster_profiles(self, centroids, feature_names, save_path=None, cluster_names=None):
         """Generates a heatmap of the cluster centroids for customer profiling."""
         df_centroids = pd.DataFrame(centroids, columns=feature_names)
         
-        df_centroids.index = np.arange(1, len(centroids) + 1)
+        if cluster_names:
+            df_centroids.index = cluster_names
+        else:
+            df_centroids.index = np.arange(1, len(centroids) + 1)
         df_centroids.index.name = 'Cluster (Segment)'
         
         plt.style.use('seaborn-v0_8-white')
@@ -100,12 +103,15 @@ class KmeansClustering:
         plt.yticks(rotation=0, fontsize=11)
         
         plt.tight_layout()
-        # Save to repository visuals folder (use absolute path so script cwd won't matter)
-        project_root = Path(__file__).resolve().parent.parent
-        visuals_dir = project_root / 'visuals'
-        visuals_dir.mkdir(parents=True, exist_ok=True)
-        save_path = visuals_dir / 'kmeans_centroids.png'
-        plt.savefig(save_path)
-        print(f"Saved centroid heatmap to: {save_path}")
-        plt.show()
-
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"  Saved -> {save_path}")
+            plt.close(fig)
+        else:
+            project_root = Path(__file__).resolve().parent.parent
+            visuals_dir = project_root / 'visuals'
+            visuals_dir.mkdir(parents=True, exist_ok=True)
+            save_path = visuals_dir / 'kmeans_centroids.png'
+            plt.savefig(save_path)
+            print(f"Saved centroid heatmap to: {save_path}")
+            plt.show()
