@@ -44,7 +44,7 @@ from sklearn.preprocessing import StandardScaler
 
 # ── allow importing sibling modules (clustering.py / hierachichal.py) ─────────
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from clustering import KmeansClustering
+from kmeans import KmeansClustering
 
 # ── mlxtend for Apriori ────────────────────────────────────────────────────────
 try:

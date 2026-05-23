@@ -1,7 +1,22 @@
+"""
+hierachichal.py
+===============
+Hierarchical (agglomerative) clustering utilities.
+
+Provides
+--------
+build_linkage_and_plot  -  reconstruct a scipy linkage matrix from a fitted
+                           AgglomerativeClustering model and render it.
+plot_dendrogram         -  fit Ward-linkage hierarchical clustering on the
+                           supplied data and save a dendrogram with a cut line.
+
+Called from main.py; can also be run standalone.
+"""
+
 import os
 import sys
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import StandardScaler
@@ -10,22 +25,7 @@ from scipy.spatial.distance import pdist
 
 # Allow importing sibling module clustering.py
 sys.path.insert(0, os.path.dirname(__file__))
-from clustering import KmeansClustering
 
-# ── Output directory ──────────────────────────────────────────────────────────
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output", "hierarchical")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-# ── Load & scale data ─────────────────────────────────────────────────────────
-current_dir = os.path.dirname(os.path.abspath(__file__))
-data_path = os.path.join(current_dir, "..", "data", "customer_info_cleaned.csv")
-data = pd.read_csv(data_path)
-data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
-
-data_for_clustering = data.iloc[:, 4:].copy()
-
-scaler = StandardScaler()
-data_scaled = scaler.fit_transform(data_for_clustering)
 
 # ── Helper: build linkage matrix and render dendrogram ───────────────────────
 def build_linkage_and_plot(model, **kwargs):
@@ -48,81 +48,99 @@ def build_linkage_and_plot(model, **kwargs):
     dendrogram(linkage_matrix, **kwargs)
     return linkage_matrix
 
-# ── Fit hierarchical model ────────────────────────────────────────────────────
-clustering = AgglomerativeClustering(
-    distance_threshold=0, n_clusters=None, linkage="ward"
-)
-clustering.fit(data_scaled)
 
-# ── Chosen k (from visual inspection of dendrogram + silhouette score) ───────
-# The elbow/silhouette plots technically peak at k=2, but the dendrogram shows
-# a meaningful gap around k=8 and silhouette also improves there — use that.
-K = 8
+def plot_dendrogram(data, k=8, save_path=None):
+    """
+    Fit Ward-linkage hierarchical clustering, plot the dendrogram with a
+    cut line at *k* clusters, and optionally save the figure.
 
-# Midpoint between the two distances that surround the chosen cut → cut line
-cut_distance = (
-    clustering.distances_[-K] + clustering.distances_[-(K - 1)]
-) / 2
+    Parameters
+    ----------
+    data : array-like
+        Feature matrix (already cleaned / scaled with RobustScaler).
+        An additional StandardScaler is applied internally to match the
+        original hierachichal.py behaviour.
+    k : int
+        Number of clusters to mark on the dendrogram.
+    save_path : str or None
+        If provided, save the figure there and close it.
+        Otherwise call plt.show().
+    """
+    # StandardScaler on top of the RobustScaled data (matches original script)
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data)
 
-# ── Dendrogram plot ───────────────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(14, 7))
-ax.set_title(
-    "Hierarchical Clustering Dendrogram  (Ward linkage)",
-    fontsize=16, fontweight="bold", pad=15,
-)
+    # Fit full tree (distance_threshold=0 keeps all merge distances)
+    clustering = AgglomerativeClustering(
+        distance_threshold=0, n_clusters=None, linkage="ward"
+    )
+    clustering.fit(data_scaled)
 
-lm = build_linkage_and_plot(
-    clustering,
-    truncate_mode="level",
-    p=5,
-    color_threshold=cut_distance,  # colours branches below the cut
-    ax=ax,
-)
+    # Cut line: midpoint between the two merge distances around the chosen k
+    cut_distance = (
+        clustering.distances_[-k] + clustering.distances_[-(k - 1)]
+    ) / 2
 
-ax.axhline(
-    y=cut_distance, color="red", linestyle="--", linewidth=1.5,
-    label=f"Chosen cut  (k = {K})",
-)
-ax.set_xlabel("Sample index (or cluster size)", fontsize=12)
-ax.set_ylabel("Ward distance", fontsize=12)
-ax.legend(fontsize=11)
+    # ── Plot ─────────────────────────────────────────────────────────────────
+    fig, ax = plt.subplots(figsize=(14, 7))
+    ax.set_title(
+        "Hierarchical Clustering Dendrogram  (Ward linkage)",
+        fontsize=16, fontweight="bold", pad=15,
+    )
 
-# Cophenetic correlation – quality metric for how well the dendrogram preserves distances
-c, _ = cophenet(lm, pdist(data_scaled))
-ax.text(
-    0.98, 0.97,
-    f"Cophenetic r = {c:.4f}",
-    transform=ax.transAxes, ha="right", va="top",
-    fontsize=10, color="dimgray",
-    bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7),
-)
-print(f"Cophenetic correlation: {c:.4f}")
+    lm = build_linkage_and_plot(
+        clustering,
+        truncate_mode="level",
+        p=5,
+        color_threshold=cut_distance,
+        ax=ax,
+    )
 
-plt.tight_layout()
-dendrogram_path = os.path.join(OUTPUT_DIR, "dendrogram.png")
-fig.savefig(dendrogram_path, dpi=150, bbox_inches="tight")
-print(f"Dendrogram saved → {dendrogram_path}")
-plt.show()
-plt.close(fig)
+    ax.axhline(
+        y=cut_distance, color="red", linestyle="--", linewidth=1.5,
+        label=f"Chosen cut  (k = {k})",
+    )
+    ax.set_xlabel("Sample index (or cluster size)", fontsize=12)
+    ax.set_ylabel("Ward distance", fontsize=12)
+    ax.legend(fontsize=11)
 
-# ── Hand off k to the existing KmeansClustering class ───────────────────────
-print(f"\nRunning KmeansClustering with k = {K} ...")
+    # Cophenetic correlation
+    c, _ = cophenet(lm, pdist(data_scaled))
+    ax.text(
+        0.98, 0.97,
+        f"Cophenetic r = {c:.4f}",
+        transform=ax.transAxes, ha="right", va="top",
+        fontsize=10, color="dimgray",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7),
+    )
+    print(f"  Cophenetic correlation: {c:.4f}")
 
-# Use scaled data so both algorithms operate on the same feature space
-km = KmeansClustering(
-    min_k=2, max_k=K + 3,
-    data=data_scaled,
-    random_seed=42,
-)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"  Saved -> {save_path}")
+        plt.close(fig)
+    else:
+        plt.show()
+        plt.close(fig)
 
-labels, inertia, centroids = km.cluster(k=K, epochs=20)
 
-print(f"Inertia: {inertia:.2f}")
-print("\nCluster distribution:")
-unique, counts = np.unique(labels, return_counts=True)
-for seg, cnt in zip(unique, counts):
-    print(f"  Segment {seg}: {cnt} customers")
+# ── Standalone entry point ───────────────────────────────────────────────────
+if __name__ == "__main__":
+    from kmeans import KmeansClustering
 
-# ── Reuse existing visualisation methods ──────────────────────────────────────
-km.plot_cluster_profiles(centroids, data_for_clustering.columns)
-km.plot_cluster_sizes(labels)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(current_dir, "..", "data", "customer_info_cleaned.csv")
+
+    data = pd.read_csv(data_path)
+    data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
+    data_for_clustering = data.iloc[:, 4:].copy()
+
+    K = 8
+    output_dir = os.path.join(current_dir, "..", "output", "hierarchical")
+    os.makedirs(output_dir, exist_ok=True)
+
+    plot_dendrogram(
+        data_for_clustering, k=K,
+        save_path=os.path.join(output_dir, "dendrogram.png"),
+    )

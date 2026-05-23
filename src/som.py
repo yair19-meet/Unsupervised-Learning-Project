@@ -1,4 +1,5 @@
 import random
+import os
 import numpy as np
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -141,7 +142,7 @@ class SOM():
 
         return U
 
-    def plot_u_matrix(self):
+    def plot_u_matrix(self, save_path=None):
         """
         Visualizes the cluster boundaries. Darker areas are 'valleys' where 
         customers are very similar. Lighter 'ridges' are transitions between groups.
@@ -172,7 +173,12 @@ class SOM():
         cbar.ax.set_ylabel('Distance (Ridge = Boundary)', rotation=-90, va="bottom", fontsize=11, labelpad=15)
         
         plt.tight_layout()
-        plt.show()
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"  Saved -> {save_path}")
+            plt.close(fig)
+        else:
+            plt.show()
 
 
     def component_planes(self):
@@ -181,7 +187,7 @@ class SOM():
         grid = self.units.reshape(n, n, -1)
         return [grid[:, :, d] for d in range(self.dimensions)]
 
-    def plot_component_planes(self):
+    def plot_component_planes(self, save_path=None):
         """
         Shows 'Heat Maps' for every customer attribute. 
         Great for saying: 'This top-left cluster is high-income but low-spending.'
@@ -215,10 +221,15 @@ class SOM():
         for j in range(n_features, len(axes)):
             axes[j].axis("off")
 
-        plt.show()
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"  Saved -> {save_path}")
+            plt.close(fig)
+        else:
+            plt.show()
 
 
-    def plot_hit_map(self):
+    def plot_hit_map(self, save_path=None):
         """
         Shows where the customers 'land' on the map. 
         Highlights which neurons are the 'hubs' for your customer base.
@@ -249,9 +260,14 @@ class SOM():
         cbar.ax.set_ylabel('Customer Count', rotation=-90, va="bottom", fontsize=11, labelpad=15)
         
         plt.tight_layout()
-        plt.show()
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"  Saved -> {save_path}")
+            plt.close(fig)
+        else:
+            plt.show()
 
-    def plot_cluster_sizes(self):
+    def plot_cluster_sizes(self, save_path=None):
         """Simple bar chart view of cluster populations."""
         if not self.clusters:
             print("Clusters are empty. Run the algorithm first.")
@@ -277,7 +293,12 @@ class SOM():
             ax.spines[spine].set_visible(False)
             
         plt.tight_layout()
-        plt.show()
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"  Saved -> {save_path}")
+            plt.close(fig)
+        else:
+            plt.show()
 
 
 # if __name__ == '__main__':

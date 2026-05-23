@@ -23,6 +23,7 @@ from sklearn.preprocessing import RobustScaler
 
 
 df["customer_birthdate"] = pd.to_datetime(df["customer_birthdate"])
+df=df.drop(["loyalty_card_number", "latitude", "longitude"], axis=1)
 
 # Selecting numerical columns
 numerical_cols = df.select_dtypes(include=[np.number]).columns
