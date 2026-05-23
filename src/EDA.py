@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np 
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier 
@@ -55,3 +57,22 @@ print(df[features_to_scale].isnull().sum())
 
 df.to_csv("./data/customer_info_cleaned.csv", index=False)
 
+# 4. Plot Correlation Heatmap
+print("\nPlotting correlation heatmap...")
+plt.style.use('seaborn-v0_8-white')
+plt.figure(figsize=(14, 12), dpi=120)
+corr_matrix = df[features_to_scale].corr()
+
+sns.heatmap(
+    corr_matrix, 
+    annot=True, 
+    cmap="coolwarm", 
+    fmt=".2f", 
+    linewidths=0.5, 
+    annot_kws={"size": 8},
+    square=True
+)
+
+plt.title("Correlation Heatmap of Customer Features", fontsize=16, fontweight="bold", pad=20)
+plt.tight_layout()
+plt.show()
