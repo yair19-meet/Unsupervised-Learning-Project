@@ -24,7 +24,7 @@ from kmeans import KmeansClustering
 from som import SOM
 from compare_clusters import compare_clusters, umap_visualization
 from hierachichal import plot_dendrogram
-from cluster_profiles import get_cluster_names
+from cluster_profiles import *
 from cluster_recommendation import run_recommendations
 
 # ── paths ────────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ def main():
     print(f"  Inertia: {inertia:,.2f}")
 
     # Match centroids to descriptive names
-    cluster_names = get_cluster_names(centroids)
+    cluster_names = assign_labels_by_heuristics(new_centroids=centroids, feature_names=feature_names)
     print("  Cluster names assigned:")
     unique, counts = np.unique(kmeans_labels, return_counts=True)
     for seg, cnt in zip(unique, counts):

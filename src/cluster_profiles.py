@@ -1,82 +1,109 @@
-"""
-cluster_profiles.py
-===================
-Hardcoded reference centroids from K-Means (k=8, seed=7, epochs=20)
-and descriptive cluster names assigned by domain analysis.
-
-The key function `get_cluster_names(centroids)` matches new centroids
-to these references by Euclidean distance, so the descriptive labels
-are always correct regardless of K-Means label shuffling.
-"""
-
 import numpy as np
-
-# ── Reference centroids (8 clusters x 18 features) ──────────────────────────
-# Order: Vegetarians, Gamers, Grocery Guys, Big Families,
-#        Body Conscious, Karens, Average Nice Joes, Promo Hunters
-REFERENCE_CENTROIDS = np.array([
-    [ 0.032099, -0.101492, -0.237348,  0.098260, -0.194863,  0.175936,  0.267106,  1.788425, -0.013872, -0.089404, -0.978171, -0.558100,  0.026742, -0.057908, -0.321673, -0.281546, -0.403883, -0.015825],
-    [-0.668126, -0.620958,  0.062818, -0.672969, -0.297781,  2.457651,  0.615417, -0.257888,  0.307645,  0.789245,  0.228216,  0.415272, -0.474997,  5.336679, -0.080267, -0.087727,  0.076174,  0.295056],
-    [ 0.036461,  0.006439,  0.055608,  0.424115,  1.681738,  0.713860,  0.142761, -0.078485,  0.727259,  0.497878,  0.522082,  0.667126,  0.607675,  0.442460,  0.138156,  0.953739,  0.383312, -0.320134],
-    [ 2.724882,  1.825792, -0.082623,  0.097887,  0.970883,  1.135192, -0.240565,  0.438347,  1.001963,  1.542515,  1.172943,  1.087152,  0.302545,  0.755204,  0.170251,  1.255524, -0.093033, -0.241998],
-    [ 0.048836, -0.134806, -0.445970,  0.301940, -0.071301, -0.198637, -0.162082,  1.205838,  0.481504, -0.447524, -0.837846, -0.511316,  1.737306, -0.382307,  0.413837,  0.001088, -0.247527,  0.216333],
-    [ 0.840690, -0.265402,  1.362586, -0.360690, -0.145113, -0.121299, -0.179634, -0.191927, -0.410391,  0.129636, -0.171570, -0.001120, -0.271120, -0.346254, -0.096891, -0.340519,  0.615473,  0.275328],
-    [-0.420779, -0.170365, -0.694015, -0.600000,  0.374232, -0.144560, -0.468856,  0.136849, -0.257643, -0.320625,  0.114588,  0.252830,  0.156429, -0.206150,  0.386669,  0.212159, -0.269486, -0.239451],
-    [-0.386627, -0.497916, -0.282296,  0.718828, -0.078079, -0.119808,  0.350765, -0.046233, -0.375166, -0.014669, -0.038969, -0.088825, -0.230513, -0.011073, -0.115391, -0.038309,  0.948101,  0.259572],
-])
-
-# Each name corresponds to the REFERENCE_CENTROIDS row with the same index.
-# Dominant feature per row (verified from centroid values):
-#   0 → lifetime_spend_vegetables high           → Vegetarians
-#   1 → lifetime_spend_videogames high           → Gamers
-#   2 → lifetime_spend_groceries high            → Grocery Guys
-#   3 → kids_home / teens_home high              → Big Families
-#   4 → lifetime_spend_hygiene high              → Body Conscious
-#   5 → number_complaints high                   → Karens
-#   6 → lifetime_spend_petfood / avg groceries   → Average Nice Joes
-#   7 → percentage_of_products_bought_promotion  → Promo Hunters
-CLUSTER_NAMES = [
-    "Vegetarians",
-    "Gamers",
-    "Grocery Guys",
-    "Big Families",
-    "Body Conscious",
-    "Karens",
-    "Average Nice Joes",
-    "Promo Hunters",
-]
+from scipy.optimize import linear_sum_assignment
 
 
-def get_cluster_names(centroids):
+
+def assign_labels_by_heuristics(new_centroids, feature_names, min_score=0.8):
     """
-    Match new centroids to reference centroids by Euclidean distance.
-
-    Parameters
-    ----------
-    centroids : np.ndarray, shape (k, n_features)
-        Centroids from a new K-Means run.
-
-    Returns
-    -------
-    names : list[str]
-        Descriptive names in the order of the input centroids.
-        e.g. if centroids[0] is closest to the Gamers reference,
-        names[0] = "Gamers".
+    Assigns cluster names using a heuristic scoring matrix and 
+    global bipartite matching to prevent duplicates.
     """
-    from scipy.spatial.distance import cdist
+    k_clusters = len(new_centroids)
+    
+    # 1. Map features to their column indices for readability
+    idx = {name: i for i, name in enumerate(feature_names)}
+    
 
-    # Pairwise distances: (k_new x k_ref)
-    distances = cdist(centroids, REFERENCE_CENTROIDS, metric="euclidean")
+    # We expand to 14 labels to give the Hungarian algorithm breathing room.
+    labels = [
+        "Gamers", "Big Families", "Promo Hunters", "Vegetarians", 
+        "Karens", "Body Conscious", "Average Nice Joes", "Grocery Guys",
+        "Meat Lovers", "Party Animals", "New Parents", "Variety Seekers", 
+        "Tech Enthusiasts", "Pet Owners"
+    ]
 
-    names = []
-    used = set()
-    for i in range(len(centroids)):
-        # Find closest unused reference centroid
-        order = np.argsort(distances[i])
-        for j in order:
-            if j not in used:
-                names.append(CLUSTER_NAMES[j])
-                used.add(j)
-                break
+    score_matrix = np.zeros((k_clusters, len(labels)))
 
-    return names
+    for i, c in enumerate(new_centroids):
+        
+        # 1. Gamers: High games, high electronics. (Weighted towards games to separate from pure tech)
+        score_matrix[i, 0] = (c[idx["lifetime_spend_videogames"]] * 1.5) + c[idx["lifetime_spend_electronics"]]
+        
+        # 2. Big Families: High kids and teens, plus high general groceries.
+        score_matrix[i, 1] = c[idx["kids_home"]] + c[idx["teens_home"]] + (c[idx["lifetime_spend_groceries"]] * 0.5)
+        
+        # 3. Promo Hunters: High promo percentage, penalized if they have huge total spend (usually budget-conscious).
+        score_matrix[i, 2] = c[idx["percentage_of_products_bought_promotion"]] - (c[idx["lifetime_spend_groceries"]] * 0.5)
+        
+        # 4. Vegetarians: High veg, explicitly penalized for meat/fish spend.
+        score_matrix[i, 3] = c[idx["lifetime_spend_vegetables"]] - c[idx["lifetime_spend_meat"]] - c[idx["lifetime_spend_fish"]]
+        
+        # 5. Karens: High complaints, high distinct stores (shopping around to complain).
+        score_matrix[i, 4] = (c[idx["number_complaints"]] * 2.0) + c[idx["distinct_stores_visited"]]
+        
+        # 6. Body Conscious: Hygiene focus, penalize alcohol and high promos (brand loyal).
+        score_matrix[i, 5] = c[idx["lifetime_spend_hygiene"]] - c[idx["lifetime_spend_alcohol_drinks"]]
+        
+        # 7. Average Nice Joes: No extremes. Normal groceries, zero/low complaints.
+        score_matrix[i, 6] = c[idx["lifetime_spend_groceries"]] - (c[idx["number_complaints"]] * 2.0)
+        
+        # 8. Grocery Guys: Pure high volume grocery/meat/veg spenders, low on niche items like games.
+        score_matrix[i, 7] = c[idx["lifetime_spend_groceries"]] + c[idx["lifetime_spend_meat"]] - c[idx["lifetime_spend_videogames"]]
+        
+        # 9. Meat Lovers: High meat/fish, low veg.
+        score_matrix[i, 8] = c[idx["lifetime_spend_meat"]] + c[idx["lifetime_spend_fish"]] - c[idx["lifetime_spend_vegetables"]]
+        
+        # 10. Party Animals: High alcohol, high non-alcohol, penalize kids (usually younger/single demographics).
+        score_matrix[i, 9] = c[idx["lifetime_spend_alcohol_drinks"]] + c[idx["lifetime_spend_nonalcohol_drinks"]] - c[idx["kids_home"]]
+        
+        # 11. New Parents: High kids, explicitly low teens.
+        score_matrix[i, 10] = c[idx["kids_home"]] - c[idx["teens_home"]]
+        
+        # 12. Variety Seekers: Massive product diversity and store hopping.
+        score_matrix[i, 11] = c[idx["lifetime_total_distinct_products"]] + c[idx["distinct_stores_visited"]]
+        
+        # 13. Tech Enthusiasts: High electronics, but average/low games (e.g., buying appliances/smart home gear).
+        score_matrix[i, 12] = c[idx["lifetime_spend_electronics"]] - c[idx["lifetime_spend_videogames"]]
+        
+        # 14. Pet Owners: Pet food is the dominant defining trait.
+        score_matrix[i, 13] = c[idx["lifetime_spend_petfood"]] * 2.0
+            
+            
+    # 3. Global Resolution (The Magic Step)
+    # linear_sum_assignment minimizes cost. Since we want to MAXIMIZE scores, 
+    # we pass the negative of the score matrix.
+    row_ind, col_ind = linear_sum_assignment(-score_matrix)
+    
+    final_assignments = [None] * k_clusters
+    
+    for cluster_idx, label_idx in zip(row_ind, col_ind):
+        best_score = score_matrix[cluster_idx, label_idx]
+        
+        # The Rejection Gate
+        if best_score < min_score:
+            final_assignments[cluster_idx] = f"Undefined_Cluster_{cluster_idx}"
+        else:
+            final_assignments[cluster_idx] = labels[label_idx]
+
+    return final_assignments
+
+
+from kmeans import *
+
+
+# TESTING
+# if __name__ == "__main__":
+#     data = pd.read_csv("./data/customer_info_cleaned.csv")
+#     data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
+#     data_for_clustering = data.iloc[:, 4:].copy()
+#     algo = KmeansClustering(4, 12, data_for_clustering, 7)
+
+#     kmeans_labels, inertia, centroids, cluster_avgs = algo.cluster(8, 20)
+
+#     feature_names = list(data_for_clustering.columns)
+
+#     final_assignments = assign_labels_by_heuristics(new_centroids=centroids, feature_names=feature_names)
+
+#     print(final_assignments)
+#     algo.plot_cluster_profiles(centroids=centroids, feature_names=feature_names)
+

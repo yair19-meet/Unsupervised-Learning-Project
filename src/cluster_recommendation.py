@@ -200,7 +200,7 @@ def run_apriori_per_cluster(shopping_bags, labels_df,
         # Frequent itemsets
         try:
             freq = apriori(basket_df, min_support=min_support,
-                           use_colnames=True, max_len=4)
+                           use_colnames=True, max_len=2)
         except Exception as e:
             print(f"    {cluster_name}: apriori failed ({e})")
             all_rules[cluster_name] = None
