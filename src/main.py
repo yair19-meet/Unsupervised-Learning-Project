@@ -39,7 +39,7 @@ RANDOM_SEED   = 7
 KMEANS_EPOCHS = 20     # n_init passed to sklearn KMeans
 SOM_EPOCHS    = 500    # SOM training iterations
 SOM_K         = 9      # 3x3 grid
-Run_recomendations = True
+Run_recomendations = False
 
 
 def main():
@@ -109,6 +109,11 @@ def main():
         cluster_names=cluster_names,
     )
 
+    som.plot_cluster_profiles(som.units, feature_names,
+        save_path=os.path.join(VISUALS_DIR, "som_centroids.png"),
+    )
+
+
     # =====================================================================
     #  5. SOM U-MATRIX
     # =====================================================================
@@ -177,12 +182,18 @@ def main():
     umap_visualization(data_for_clustering, kmeans_labels,
                        random_seed=RANDOM_SEED,
                        cluster_names=cluster_names)
+    
+    umap_visualization(data_for_clustering, som_labels,
+                       random_seed=RANDOM_SEED,
+                       cluster_names=som_labels, kmeans=False)
+
+
 
     # =====================================================================
     #  12. RECOMMENDATIONS (Phase A: product lift, Phase B: Apriori)
     # =====================================================================
     print("\n")
-    if run_recommendations:
+    if Run_recomendations:
         print("running apriori")
         run_recommendations(labels_df)
     else:

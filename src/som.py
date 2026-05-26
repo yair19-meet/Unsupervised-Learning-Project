@@ -5,8 +5,8 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
-
-
+import seaborn as sns
+from pathlib import Path
 class SOM():
     """
     Self-Organizing Map (SOM) implementation.
@@ -110,6 +110,41 @@ class SOM():
         self.cluster_inputs(inputs)
         return history
     
+    def plot_cluster_profiles(self, centroids, feature_names, save_path=None, cluster_names=None):
+        """Generates a heatmap of the cluster centroids for customer profiling."""
+        df_centroids = pd.DataFrame(centroids, columns=feature_names)
+        
+        if cluster_names:
+            df_centroids.index = cluster_names
+        else:
+            df_centroids.index = np.arange(1, len(centroids) + 1)
+        df_centroids.index.name = 'Cluster (Segment)'
+        
+        plt.style.use('seaborn-v0_8-white')
+        fig, ax = plt.subplots(figsize=(14, 6), dpi=120)
+        
+        sns.heatmap(df_centroids, cmap="coolwarm", annot=True, fmt=".2f", 
+                    linewidths=1, ax=ax, cbar_kws={'label': 'Average Feature Value'})
+        
+        ax.set_title("Customer Segment Profiles SOM clusters", fontsize=16, fontweight='bold', pad=15)
+        
+        plt.xticks(rotation=45, ha='right', fontsize=10)
+        plt.yticks(rotation=0, fontsize=11)
+        
+        plt.tight_layout()
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"  Saved -> {save_path}")
+            plt.close(fig)
+        else:
+            project_root = Path(__file__).resolve().parent.parent
+            visuals_dir = project_root / 'visuals'
+            visuals_dir.mkdir(parents=True, exist_ok=True)
+            save_path = visuals_dir / 'som_clusters.png'
+            plt.savefig(save_path)
+            print(f"Saved centroid heatmap to: {save_path}")
+            plt.show()
+
 
     def get_grid(self):
         """Reshapes the flat list of units back into a 2D grid for plotting."""

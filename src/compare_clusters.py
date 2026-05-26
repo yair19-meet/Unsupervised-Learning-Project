@@ -65,7 +65,7 @@ def compare_clusters(kmeans_labels: np.ndarray, som_labels: np.ndarray):
 
 
 def umap_visualization(data: pd.DataFrame, kmeans_labels: np.ndarray,
-                       random_seed: int = 7, cluster_names: list = None):
+                       random_seed: int = 7, cluster_names: list = None, kmeans=True):
     """
     Compute a 2-D UMAP embedding from *data* and colour it with the
     pre-computed *kmeans_labels*, labelled with descriptive *cluster_names*.
@@ -117,8 +117,14 @@ def umap_visualization(data: pd.DataFrame, kmeans_labels: np.ndarray,
     ax.set_xlabel("UMAP 1")
     ax.set_ylabel("UMAP 2")
     plt.tight_layout()
-
-    save_path = os.path.join(VISUALS_DIR, "umap_kmeans.png")
-    fig.savefig(save_path, dpi=150, bbox_inches="tight")
-    print(f"  UMAP saved -> {save_path}")
-    plt.close(fig)
+    
+    if kmeans:
+        save_path = os.path.join(VISUALS_DIR, "umap_kmeans.png")
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"  UMAP saved -> {save_path}")
+        plt.close(fig)
+    else:
+        save_path = os.path.join(VISUALS_DIR, "umap_som.png")
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"  UMAP saved -> {save_path}")
+        plt.close(fig)

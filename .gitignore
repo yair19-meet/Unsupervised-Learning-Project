@@ -14,3 +14,4 @@ recommendations
 .vscode/
 .idea/
 
+src/__pycache__
