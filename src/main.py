@@ -39,7 +39,7 @@ RANDOM_SEED   = 7
 KMEANS_EPOCHS = 20     # n_init passed to sklearn KMeans
 SOM_EPOCHS    = 500    # SOM training iterations
 SOM_K         = 9      # 3x3 grid
-Run_recomendations = False
+Run_recomendations = True
 
 
 def main():
