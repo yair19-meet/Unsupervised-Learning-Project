@@ -20,6 +20,7 @@ This repository contains a complete, end-to-end pipeline for data-driven custome
     ├── som.py                     # Self-Organizing Map (SOM) 
     ├── clustering_profiles.py     # automated centroids labeling
     ├── compare_clusters.py        # Functions for algorithm comparison, UMAP, and cluster coherence heatmaps
+    ├── cluster_recommendation.py  # Recommendation generation using lift and apriori algorithm
     └── rfm/                       # 5-5-5 RFM segmentation logic and grouping
 ```
 
