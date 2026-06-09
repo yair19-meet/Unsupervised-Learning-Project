@@ -89,21 +89,3 @@ def assign_labels_by_heuristics(new_centroids, feature_names, min_score=0.8):
 
 
 from kmeans import *
-
-
-# TESTING
-# if __name__ == "__main__":
-#     data = pd.read_csv("./data/customer_info_cleaned.csv")
-#     data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
-#     data_for_clustering = data.iloc[:, 4:].copy()
-#     algo = KmeansClustering(4, 12, data_for_clustering, 7)
-
-#     kmeans_labels, inertia, centroids, cluster_avgs = algo.cluster(8, 20)
-
-#     feature_names = list(data_for_clustering.columns)
-
-#     final_assignments = assign_labels_by_heuristics(new_centroids=centroids, feature_names=feature_names)
-
-#     print(final_assignments)
-#     algo.plot_cluster_profiles(centroids=centroids, feature_names=feature_names)
-
