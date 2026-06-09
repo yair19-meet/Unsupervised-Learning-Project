@@ -1,5 +1,47 @@
-# Unsupervised-Learning-Project
-in the repo you have two main folders src and visualisations 
-in src you have the files that allow us to run the comparison between the models used as well as to generate the recomendations for promotions powered by lift, in the report they are the points 2, 4, 5 and 6
-inside source you will also find the rfm folder a seperate part of the repo dedicated to a priori clustering with 5-5-5 rfm segmentation, in the report is conected to point 3
-In visualisations there is the result of all visualizations done for the report already loaded to ease the evaluation, however do to the size of the file the reomendations folder with information about the lift coeficients of every recomendation for each cluster will have to be run to be acessed.
+# Customer Segmentation & Clustering Analysis
+
+## Overview
+This repository contains a complete, end-to-end pipeline for data-driven customer segmentation. It leverages exploratory data analysis (EDA), an *a priori* RFM (Recency, Frequency, Monetary) segmentation, and advanced machine learning clustering algorithms. The pipeline processes raw data, evaluates multiple models to find the optimal customer groupings, and automatically generates visualizations and business recommendations.
+
+## Project Structure
+
+├── data/
+│   ├── customer_basket.csv        # Raw input data
+│   ├── customer_info.csv          # Raw input data
+│   └── customer_info_cleaned.csv  # Cleaned data outputted by EDA.py
+├── recommendations/               # Generated recommendation outputs (CSV/TXT)
+├── visuals/                       # Visualizations, umap plots, and heatmaps
+└── src/
+    ├── main.py                    # Main execution script controlling algorithms, visualizations, and recommendations
+    ├── EDA.py                     # Data preprocessing and feature correlation heatmap generation
+    ├── kmeans.py                  # K-Means clustering model training and results
+    ├── hierarchical.py            # Hierarchical clustering model training and results
+    ├── som.py                     # Self-Organizing Maps (SOM) training and results
+    ├── clustering_profiles.py     # Saved labels for cluster naming and testing utilities
+    ├── compare_clusters.py        # Functions for algorithm comparison, UMAP, and cluster coherence heatmaps
+    └── rfm/                       # 5-5-5 RFM segmentation logic and grouping
+
+## Prerequisites & Dependencies
+
+This project relies on a few standard data science libraries. Note that the Self-Organizing Map (SOM) algorithm is a custom, in-house implementation, so it does not require any external SOM libraries.
+
+To install the required dependencies, run the following command in your terminal:
+
+```bash
+pip install numpy pandas scikit-learn seaborn umap-learn
+```
+
+## Usage & Execution
+The repository already includes the preprocessed_data.csv in the data/ folder, meaning you can immediately start training the models and generating outputs without needing to run the EDA script first.
+
+To run the clustering pipeline:
+
+1) Open src/main.py.
+
+2) Locate the configuration variables at the top of the file to set your desired number of clusters:
+
+    k_kmeans: Set to your desired number of K-Means clusters (e.g., k_kmeans = 5).
+
+    k_som: Set to your desired number of SOM clusters. Important: This value must be a perfect square (e.g., 4, 9, 16, 25) due to the grid-based nature of the Self-Organizing Map.
+
+3) run main.py 
