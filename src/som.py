@@ -334,24 +334,3 @@ class SOM():
             plt.close(fig)
         else:
             plt.show()
-
-
-# if __name__ == '__main__':
-#     # Load and prep the customer data
-#     data = pd.read_csv("data/customer_info_cleaned.csv")
-#     data["customer_birthdate"] = pd.to_datetime(data["customer_birthdate"])
-
-#     # We only cluster on numeric/behavioral features (excluding ID, Name, etc.)
-#     data_for_clustering = data.iloc[:,4:].copy()
-
-#     print(f"Clustering on {len(data_for_clustering.columns)} features: {list(data_for_clustering.columns)}")
-
-#     # Initialize SOM: 3x3 grid (9 units) for 150 epochs
-#     som = SOM(sigma=1, alpha=0.5, dimensions=21, k=9, low_range=-1, high_range=1, epochs=150, random_seed=7)
-#     history = som.algorithm(data_for_clustering.values, data_for_clustering.columns)
-
-#     # Let's see the results!
-#     som.plot_u_matrix()
-#     som.plot_component_planes()
-#     som.plot_hit_map()
-#     som.plot_cluster_sizes()
