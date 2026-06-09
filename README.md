@@ -5,6 +5,7 @@ This repository contains a complete, end-to-end pipeline for data-driven custome
 
 ## Project Structure
 
+```text
 ├── data/
 │   ├── customer_basket.csv        # Raw input data
 │   ├── customer_info.csv          # Raw input data
@@ -14,12 +15,13 @@ This repository contains a complete, end-to-end pipeline for data-driven custome
 └── src/
     ├── main.py                    # Main execution script controlling algorithms, visualizations, and recommendations
     ├── EDA.py                     # Data preprocessing and feature correlation heatmap generation
-    ├── kmeans.py                  # K-Means clustering model training and results
-    ├── hierarchical.py            # Hierarchical clustering model training and results
-    ├── som.py                     # Self-Organizing Maps (SOM) training and results
-    ├── clustering_profiles.py     # Saved labels for cluster naming and testing utilities
+    ├── kmeans.py                  # K-Means clustering model 
+    ├── hierarchical.py            # Hierarchical clustering model
+    ├── som.py                     # Self-Organizing Map (SOM) 
+    ├── clustering_profiles.py     # automated centroids labeling
     ├── compare_clusters.py        # Functions for algorithm comparison, UMAP, and cluster coherence heatmaps
     └── rfm/                       # 5-5-5 RFM segmentation logic and grouping
+```
 
 ## Prerequisites & Dependencies
 
@@ -28,7 +30,7 @@ This project relies on a few standard data science libraries. Note that the Self
 To install the required dependencies, run the following command in your terminal:
 
 ```bash
-pip install numpy pandas scikit-learn seaborn umap-learn
+pip install numpy pandas scikit-learn seaborn umap-learn scipy
 ```
 
 ## Usage & Execution
@@ -42,6 +44,6 @@ To run the clustering pipeline:
 
     k_kmeans: Set to your desired number of K-Means clusters (e.g., k_kmeans = 5).
 
-    k_som: Set to your desired number of SOM clusters. Important: This value must be a perfect square (e.g., 4, 9, 16, 25) due to the grid-based nature of the Self-Organizing Map.
+    k_som: Set to your desired number of SOM clusters. Important: This value must be a perfect square (e.g., 4, 9, 16, 25) due to our design choice to enforce a square grid with identical dimensions.
 
 3) run main.py 
